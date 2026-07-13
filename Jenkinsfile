@@ -9,9 +9,9 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git credentialsId: 'github-token',
-                    branch: 'main',
-                    url: 'https://github.com/username/springboot-devops.git'
+                git branch: 'main',
+                    credentialsId: 'github-creds',
+                    url: 'https://github.com/dineshd1575/jenkins-devops-demo.git'
             }
         }
 
@@ -31,7 +31,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t username/springboot-app .'
+                sh 'docker build -t dineshd1575/springboot-app:latest .'
             }
         }
 
@@ -44,7 +44,7 @@ pipeline {
                 )]) {
                     sh '''
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push username/springboot-app
+                    docker push dineshd1575/springboot-app:latest
                     '''
                 }
             }
@@ -52,9 +52,21 @@ pipeline {
 
         stage('Deploy to EKS') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl apply -f service.yaml'
+                sh '''
+                kubectl apply -f deployment.yaml
+                kubectl apply -f service.yaml
+                '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the console output.'
         }
     }
 }
