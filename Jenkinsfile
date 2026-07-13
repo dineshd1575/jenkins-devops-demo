@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven-3.9'
+    }
+
     stages {
 
         stage('Build') {
@@ -10,17 +14,12 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('Sonar') {
-            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                sh '''
-                mvn sonar:sonar \
-                -Dsonar.login=$SONAR_TOKEN
-                '''
+            steps {
+                withSonarQubeEnv('Sonar') {
+                    sh 'mvn sonar:sonar'
+                }
             }
         }
-    }
-
 
         stage('Docker') {
             steps {
@@ -33,5 +32,6 @@ pipeline {
                 sh 'kubectl apply -f deployment.yaml'
             }
         }
+
     }
 }
