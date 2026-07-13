@@ -2,7 +2,11 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven'
+        maven 'Maven-3.9'
+    }
+
+    environment {
+        IMAGE_NAME = "dineshd1575/springboot-app:latest"
     }
 
     stages {
@@ -31,20 +35,23 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t dineshd1575/springboot-app:latest .'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
         stage('Docker Push') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',   // <-- Change if your ID is different
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push dineshd1575/springboot-app:latest
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $IMAGE_NAME
+                        docker logout
                     '''
                 }
             }
@@ -53,8 +60,12 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                kubectl apply -f deployment.yaml
-                kubectl apply -f service.yaml
+                    aws eks update-kubeconfig \
+                      --region ap-south-1 \
+                      --name devops-cluster
+
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
                 '''
             }
         }
@@ -62,9 +73,8 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Pipeline completed successfully.'
         }
-
         failure {
             echo 'Pipeline failed. Check the console output.'
         }
