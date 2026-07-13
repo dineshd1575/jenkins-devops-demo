@@ -7,6 +7,10 @@ pipeline {
 
     environment {
         IMAGE_NAME = "dineshd1575/springboot-app:latest"
+        AWS_REGION = "eu-north-1"
+        EKS_CLUSTER = "devops-cluster"
+        HOME = "/var/lib/jenkins"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
     stages {
@@ -43,7 +47,7 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'dockerhub',   // <-- Change if your ID is different
+                        credentialsId: 'dockerhub',
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )
@@ -57,15 +61,74 @@ pipeline {
             }
         }
 
+        stage('Debug Environment') {
+            steps {
+                sh '''
+                    echo "==============================="
+                    echo "Current User"
+                    whoami
+
+                    echo "==============================="
+                    echo "Current Directory"
+                    pwd
+
+                    echo "==============================="
+                    echo "HOME"
+                    echo $HOME
+
+                    echo "==============================="
+                    echo "KUBECONFIG"
+                    echo $KUBECONFIG
+
+                    echo "==============================="
+                    echo "AWS Identity"
+                    aws sts get-caller-identity
+
+                    echo "==============================="
+                    echo "AWS Version"
+                    aws --version
+
+                    echo "==============================="
+                    echo "Kubectl Version"
+                    kubectl version --client
+
+                    echo "==============================="
+                    echo "Current Context"
+                    kubectl config current-context
+
+                    echo "==============================="
+                    echo "Cluster Info"
+                    kubectl cluster-info
+
+                    echo "==============================="
+                    echo "Nodes"
+                    kubectl get nodes
+
+                    echo "==============================="
+                    echo "Workspace Files"
+                    ls -l
+
+                    echo "==============================="
+                '''
+            }
+        }
+
         stage('Deploy to EKS') {
             steps {
                 sh '''
-                    aws eks update-kubeconfig \
-                      --region eu-north-1 \
-                      --name devops-cluster
+                    export HOME=/var/lib/jenkins
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
 
-                    kubectl apply -f deployment.yaml
-                    kubectl apply -f service.yaml
+                    aws eks update-kubeconfig \
+                      --region $AWS_REGION \
+                      --name $EKS_CLUSTER
+
+                    kubectl apply -f deployment.yaml --validate=false
+                    kubectl apply -f service.yaml --validate=false
+
+                    kubectl get deployments
+                    kubectl get pods
+                    kubectl get svc
                 '''
             }
         }
@@ -73,10 +136,15 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully.'
+            echo "Pipeline completed successfully."
         }
+
         failure {
-            echo 'Pipeline failed. Check the console output.'
+            echo "Pipeline failed."
+        }
+
+        always {
+            cleanWs()
         }
     }
 }
