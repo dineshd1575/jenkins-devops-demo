@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "dineshd1575/springboot-app:latest"
+        IMAGE_NAME = "dineshd1575/jenkins-devops-demo:latest"
         AWS_REGION = "eu-north-1"
         EKS_CLUSTER = "devops-cluster"
         HOME = "/var/lib/jenkins"
